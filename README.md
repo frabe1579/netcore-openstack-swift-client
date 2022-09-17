@@ -1,0 +1,1 @@
+# netcore-openstack-swift-client
