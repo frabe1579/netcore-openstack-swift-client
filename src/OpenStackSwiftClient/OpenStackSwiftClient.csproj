@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <PackageId>OpenStackSwiftClient</PackageId>
-    <PackageVersion>0.1.0</PackageVersion>
+    <PackageVersion>1.0.0</PackageVersion>
     <PackageTags>openstack swift netstandard2.0 tempurl</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Francesco Benetton (me@frab.it)</Authors>
