@@ -29,7 +29,7 @@ namespace OpenStackSwiftClient.UnitTests
         o.AuthUrl = options.AuthUrl;
         o.Username = options.Username;
         o.UserDomainName = options.UserDomainName;
-        o.Password = Environment.GetEnvironmentVariable("SWIFT_CONTAINER_PASSWORD") ?? options.Password;
+        o.Password = options.Password;
         o.ProjectId = options.ProjectId;
         o.ProjectName = options.ProjectName;
         o.ProjectDomainName = options.ProjectDomainName;

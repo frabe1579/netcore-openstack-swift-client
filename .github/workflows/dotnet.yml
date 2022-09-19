@@ -23,4 +23,6 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Test
+      env:
+        TEST_OPENSTACK__PASSWORD: ${{ secrets.TEST_OPENSTACK__PASSWORD }}
       run: dotnet test --no-build --verbosity normal
