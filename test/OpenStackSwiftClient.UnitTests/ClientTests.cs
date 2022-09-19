@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenStackSwiftClient.Models;
 using OpenStackSwiftClient.UnitTests.TestUtils;
@@ -14,19 +15,25 @@ namespace OpenStackSwiftClient.UnitTests
     ServiceProvider CreateProvider() {
       var services = new ServiceCollection();
 
+      var cb = new ConfigurationBuilder()
+        .AddJsonFile("./settings.json")
+        .AddUserSecrets(typeof(ClientTests).Assembly)
+        .AddEnvironmentVariables("TEST_");
+      var config = cb.Build();
+      var options = new OpenStackOptions();
+      config.GetSection("openstack").Bind(options);
+
       services.AddHttpClient();
 
-      services.AddOpenStackSwiftClient(options => {
-        var json = File.ReadAllText("./settings.json");
-        var o = JsonSerializer.Deserialize<OpenStackOptions>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        options.AuthUrl = o.AuthUrl;
-        options.Username = o.Username;
-        options.UserDomainName = o.UserDomainName;
-        options.Password = o.Password;
-        options.ProjectId = o.ProjectId;
-        options.ProjectName = o.ProjectName;
-        options.ProjectDomainName = o.ProjectDomainName;
-        options.RegionName = o.RegionName;
+      services.AddOpenStackSwiftClient(o => {
+        o.AuthUrl = options.AuthUrl;
+        o.Username = options.Username;
+        o.UserDomainName = options.UserDomainName;
+        o.Password = Environment.GetEnvironmentVariable("SWIFT_CONTAINER_PASSWORD") ?? options.Password;
+        o.ProjectId = options.ProjectId;
+        o.ProjectName = options.ProjectName;
+        o.ProjectDomainName = options.ProjectDomainName;
+        o.RegionName = options.RegionName;
       });
 
       return services.BuildServiceProvider();
