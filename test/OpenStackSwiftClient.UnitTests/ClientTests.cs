@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using OpenStackSwiftClient.Models;
+using OpenStackSwiftClient.UnitTests.TestUtils;
 
 namespace OpenStackSwiftClient.UnitTests
 {
@@ -354,7 +355,8 @@ namespace OpenStackSwiftClient.UnitTests
         using (var hashStream = HashStream.CreateRead(randomStream, HashMode.MD5)) {
           var buffer = new byte[randomStream.Length];
           await hashStream.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
-          new WebClient().UploadDataAsync(new Uri(putUrl), "PUT", buffer);
+          using var httpClient = new HttpClient();
+          await httpClient.PutAsync(putUrl, new ByteArrayContent(buffer));
           sourceMd5 = hashStream.ComputeHash();
         }
         Assert.NotNull(sourceMd5);

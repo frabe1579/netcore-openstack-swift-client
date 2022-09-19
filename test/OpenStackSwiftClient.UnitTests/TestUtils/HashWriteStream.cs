@@ -1,4 +1,4 @@
-﻿namespace OpenStackSwiftClient.UnitTests
+﻿namespace OpenStackSwiftClient.UnitTests.TestUtils
 {
   class HashWriteStream : HashStream
   {

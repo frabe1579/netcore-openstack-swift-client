@@ -3,7 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OpenStackSwiftClient.UnitTests
+namespace OpenStackSwiftClient.UnitTests.TestUtils
 {
   public class SourceStreamWithUnknownLength : Stream
   {

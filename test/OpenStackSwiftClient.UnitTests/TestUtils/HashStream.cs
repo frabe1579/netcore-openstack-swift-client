@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace OpenStackSwiftClient.UnitTests
+namespace OpenStackSwiftClient.UnitTests.TestUtils
 {
   public abstract class HashStream : Stream
   {

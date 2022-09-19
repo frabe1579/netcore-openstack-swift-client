@@ -2,7 +2,7 @@
 using System.IO;
 using System.Linq;
 
-namespace OpenStackSwiftClient.UnitTests
+namespace OpenStackSwiftClient.UnitTests.TestUtils
 {
   public class RandomStream : Stream
   {
