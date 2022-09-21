@@ -184,16 +184,16 @@ namespace OpenStackSwiftClient.Impl
       }, cancellationToken);
     }
 
-    public Task<ObjectInfoModel> UploadObjectAsync(string containerName, string name, Stream content, string contentType = null, string fileName = null, bool overwrite = true, CancellationToken cancellationToken = default) {
+    public async Task<ObjectInfoModel> UploadObjectAsync(string containerName, string name, Stream content, string contentType = null, string fileName = null, bool overwrite = true, CancellationToken cancellationToken = default) {
       if (content == null) throw new ArgumentNullException(nameof(content));
       if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
       if (string.IsNullOrWhiteSpace(containerName)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(containerName));
-      var rc = 0;
-      var policy = content.CanSeek ? _retryPolicy : _noOpPolicy;
-      return policy.ExecuteAsync(async ct => {
-        if (rc > 0)
-          content.Seek(0, SeekOrigin.Begin);
-        rc++;
+      //var rc = 0;
+      //var policy = content.CanSeek ? _retryPolicy : _noOpPolicy;
+      //return await policy.ExecuteAsync(async ct => {
+        //if (rc > 0)
+        //  content.Seek(0, SeekOrigin.Begin);
+        //rc++;
         using var request = new HttpRequestMessage(HttpMethod.Put, GetPath(containerName, name));
         if (!overwrite) {
           request.Headers.TryAddWithoutValidation("If-None-Match", "*");
@@ -219,7 +219,7 @@ namespace OpenStackSwiftClient.Impl
             LastModified = lastModified?.UtcDateTime ?? new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
           };
         };
-      }, cancellationToken);
+      //}, cancellationToken);
     }
 
     public Task<ObjectInfoModel> DownloadObjectAsync(string containerName, string name, Stream targetStream, CancellationToken cancellationToken = default) {
