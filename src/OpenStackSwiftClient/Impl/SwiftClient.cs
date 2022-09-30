@@ -188,38 +188,32 @@ namespace OpenStackSwiftClient.Impl
       if (content == null) throw new ArgumentNullException(nameof(content));
       if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
       if (string.IsNullOrWhiteSpace(containerName)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(containerName));
-      //var rc = 0;
-      //var policy = content.CanSeek ? _retryPolicy : _noOpPolicy;
-      //return await policy.ExecuteAsync(async ct => {
-        //if (rc > 0)
-        //  content.Seek(0, SeekOrigin.Begin);
-        //rc++;
-        using var request = new HttpRequestMessage(HttpMethod.Put, GetPath(containerName, name));
-        if (!overwrite) {
-          request.Headers.TryAddWithoutValidation("If-None-Match", "*");
-          request.Headers.Expect.Add(new NameValueWithParametersHeaderValue("100-Continue"));
-        }
+      using var request = new HttpRequestMessage(HttpMethod.Put, GetPath(containerName, name));
+      if (!overwrite) {
+        request.Headers.TryAddWithoutValidation("If-None-Match", "*");
+        request.Headers.Expect.Add(new NameValueWithParametersHeaderValue("100-Continue"));
+      }
 
-        /*DevSkim: ignore DS126858*/
-        request.Content = new StreamContent(content);
-        if (!string.IsNullOrWhiteSpace(contentType))
-          request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
-        if (!string.IsNullOrWhiteSpace(fileName))
-          request.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") { FileName = fileName };
-        using (var response = await RunAsync(request, cancellationToken).ConfigureAwait(false)) {
-          if (response.StatusCode == HttpStatusCode.PreconditionFailed)
-            throw new ObjectAlreadyExistsException();
-          response.EnsureSuccessStatusCode();
-          var targetMd5 = response.Headers.GetValueOrNull("ETag")?.Trim('\"');
-          var lastModified = response.Content.Headers.LastModified;
-          return new ObjectInfoModel {
-            Name = name,
-            ContentType = contentType,
-            Hash = targetMd5,
-            LastModified = lastModified?.UtcDateTime ?? new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-          };
+      var countingStream = new CountingStream(new IsolatedStream(content));
+      request.Content = new StreamContent(countingStream);
+      if (!string.IsNullOrWhiteSpace(contentType))
+        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
+      if (!string.IsNullOrWhiteSpace(fileName))
+        request.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") { FileName = fileName };
+      using (var response = await RunAsync(request, cancellationToken).ConfigureAwait(false)) {
+        if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+          throw new ObjectAlreadyExistsException();
+        response.EnsureSuccessStatusCode();
+        var targetMd5 = response.Headers.GetValueOrNull("ETag")?.Trim('\"');
+        var lastModified = response.Content.Headers.LastModified;
+        return new ObjectInfoModel {
+          Name = name,
+          ContentType = contentType,
+          Hash = targetMd5,
+          LastModified = lastModified?.UtcDateTime ?? new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+          Bytes = countingStream.TotalRead
         };
-      //}, cancellationToken);
+      };
     }
 
     public Task<ObjectInfoModel> DownloadObjectAsync(string containerName, string name, Stream targetStream, CancellationToken cancellationToken = default) {

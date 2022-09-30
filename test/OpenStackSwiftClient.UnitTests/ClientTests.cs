@@ -96,7 +96,7 @@ namespace OpenStackSwiftClient.UnitTests
           sourceInfo = await client.UploadObjectAsync(containerName, objectName, new SourceStreamWithUnknownLength(randomStream)).ConfigureAwait(false);
         Assert.NotNull(sourceInfo);
         Assert.NotNull(sourceInfo.Hash);
-        Assert.Null(sourceInfo.Bytes);
+        Assert.Equal(length, sourceInfo.Bytes);
         Assert.Equal(objectName, sourceInfo.Name);
         Assert.True(length == 0 || sourceInfo.Hash != Hex.ToHex(Hash.ComputeHash(Array.Empty<byte>(), HashMode.MD5)));
         if (length == 0)

@@ -12,7 +12,7 @@ namespace OpenStackSwiftClient.Models
     public DateTime LastModified { get; set; }
 
     [JsonPropertyName("bytes")]
-    public long? Bytes { get; set; }
+    public long Bytes { get; set; }
 
     [JsonPropertyName("name")]
     public string Name { get; set; }
