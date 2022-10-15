@@ -16,7 +16,6 @@ namespace Microsoft.Extensions.DependencyInjection
       services.AddSingleton<TempUrlKeyStore>();
       services.AddTransient<ISwiftClient, SwiftClient>();
       services.AddTransient<IOpenStackAuth, OpenStackAuth>();
-      services.AddTransient<ISwiftTempUrlService, SwiftTempUrlService>();
       return services;
     }
   }

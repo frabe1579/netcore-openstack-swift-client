@@ -7,9 +7,12 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Microsoft.Extensions.Options;
 using OpenStackSwiftClient;
 using OpenStackSwiftClient.Models;
 using OpenStackSwiftClient.Utils;
@@ -19,16 +22,19 @@ namespace OpenStackSwiftClient.Impl
 {
   class SwiftClient : ISwiftClient
   {
+    const string ValidKeyChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     public static string EndpointName = "object-store";
 
     private readonly IOpenStackAuth _auth;
-
+    readonly TempUrlKeyStore _tempUrlKeyStore;
+    readonly IOptions<OpenStackOptions> _options;
     readonly AsyncPolicy _retryPolicy;
     readonly AsyncPolicy _noOpPolicy;
 
-    public SwiftClient(IOpenStackAuth auth) {
+    public SwiftClient(IOpenStackAuth auth, TempUrlKeyStore tempUrlKeyStore, IOptions<OpenStackOptions> options) {
       _auth = auth;
-
+      _tempUrlKeyStore = tempUrlKeyStore;
+      _options = options;
       _retryPolicy = Policy
         .Handle<OpenStackAuthorizationException>()
         .RetryAsync()
@@ -344,6 +350,94 @@ namespace OpenStackSwiftClient.Impl
           return true;
         }
       }
+    }
+
+    bool IsValidKey(TempUrlKey key, OpenStackOptions options) {
+      return key != null && (!options.SwiftTempUrl.AutoGenerateKeys || key.DateCreated == null || key.DateCreated.Value.AddSeconds(options.SwiftTempUrl.KeysMinDuration) > DateTime.UtcNow);
+    }
+
+    async Task<string> GetKeyAsync(string containerName, CancellationToken cancellationToken = default) {
+      var key = _tempUrlKeyStore.GetKey();
+
+      var options = _options.Value;
+
+      if (IsValidKey(key, options))
+        return key.Key;
+
+      await _tempUrlKeyStore.Semaphore.WaitAsync(cancellationToken);
+      try {
+        key = _tempUrlKeyStore.GetKey();
+        if (IsValidKey(key, options))
+          return key.Key;
+
+        var info = await GetContainerInfoAsync(containerName, cancellationToken).ConfigureAwait(false);
+        TempUrlKey curKey = null;
+        if (!string.IsNullOrWhiteSpace(info.MetaTempUrlKey) && info.MetaTempUrlKeyCreated.HasValue)
+          curKey = new TempUrlKey(info.MetaTempUrlKey, info.MetaTempUrlKeyCreated.Value);
+        if (curKey != null && IsValidKey(curKey, options)) {
+          _tempUrlKeyStore.SetKey(curKey);
+          return curKey.Key;
+        }
+
+        if (!options.SwiftTempUrl.AutoGenerateKeys) {
+          throw new InvalidOperationException($"Keys not available in container '{containerName}' and 'AutoGenerateKeys' option is disabled.");
+        }
+        var r2 = new ContainerDetailsModel {
+          MetaTempUrlKey2 = info.MetaTempUrlKey,
+          MetaTempUrlKey2Created = info.MetaTempUrlKeyCreated,
+          MetaTempUrlKey = GenerateUniqueKey(options),
+          MetaTempUrlKeyCreated = DateTime.UtcNow
+        };
+        await SetContainerInfoAsync(containerName, r2, cancellationToken).ConfigureAwait(false);
+        var newKey = new TempUrlKey(r2.MetaTempUrlKey, r2.MetaTempUrlKeyCreated);
+        _tempUrlKeyStore.SetKey(newKey);
+        return newKey.Key;
+      }
+      finally {
+        _tempUrlKeyStore.Semaphore.Release();
+      }
+    }
+
+    async Task<string> CreateTempUrlAsync(string containerName, string objectName, string method = "GET", string fileName = null, bool inline = false, long deleteAfter = 86400, CancellationToken cancellationToken = default) {
+      if (string.IsNullOrWhiteSpace(containerName)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(containerName));
+      if (string.IsNullOrWhiteSpace(objectName)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(objectName));
+
+      var key = await GetKeyAsync(containerName, cancellationToken).ConfigureAwait(false);
+
+      var expiresInUnixTimeSeconds = DateTimeOffset.Now.ToUnixTimeSeconds() + deleteAfter;
+      var fullPath = await GetUrlAsync(containerName, objectName, cancellationToken).ConfigureAwait(false);
+      var path = new Uri(fullPath).AbsolutePath;
+      var hmacBody = $"{method}\n{XmlConvert.ToString(expiresInUnixTimeSeconds)}\n{path}";
+      string sig;
+      using (var hmac = new HMACSHA1(Encoding.ASCII.GetBytes(key)))
+        sig = Hex.ToHex(hmac.ComputeHash(Encoding.UTF8.GetBytes(hmacBody)));
+
+      var s = fullPath + FormattableString.Invariant($"?temp_url_sig={sig}&temp_url_expires={expiresInUnixTimeSeconds}");
+      if (!string.IsNullOrWhiteSpace(fileName))
+        s += $"&filename={WebUtility.UrlEncode(fileName)}";
+      if (inline)
+        s += "&inline";
+      return s;
+    }
+
+    string GenerateUniqueKey(OpenStackOptions options) {
+      using var rng = RandomNumberGenerator.Create();
+      var buffer = new byte[options.SwiftTempUrl.KeyLength];
+      rng.GetBytes(buffer);
+      var sb = new StringBuilder(buffer.Length);
+      for (int i = 0; i < buffer.Length; i++) {
+        sb.Append(ValidKeyChars[buffer[i] % ValidKeyChars.Length]);
+      }
+
+      return sb.ToString();
+    }
+
+    public Task<string> CreateGetTempUrlAsync(string containerName, string objectName, string fileName = null, bool inline = false, long deleteAfterSeconds = 86400, CancellationToken cancellationToken = default) {
+      return CreateTempUrlAsync(containerName, objectName, "GET", fileName, inline, deleteAfterSeconds, cancellationToken);
+    }
+
+    public Task<string> CreatePutTempUrlAsync(string containerName, string objectName, long validForSeconds = 86400, CancellationToken cancellationToken = default) {
+      return CreateTempUrlAsync(containerName, objectName, "PUT", deleteAfter: validForSeconds, cancellationToken: cancellationToken);
     }
   }
 }

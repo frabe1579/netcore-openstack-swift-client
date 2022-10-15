@@ -24,5 +24,7 @@ namespace OpenStackSwiftClient
     Task<bool> DeleteObjectAsync(string containerName, string name, bool throwsExceptionIfNotFound = true, CancellationToken cancellationToken = default);
     Task<string> GetUrlAsync(string containerName, string objectName, CancellationToken cancellationToken = default);
     Task<string> GetUrlAsync(string path, CancellationToken cancellationToken = default);
+    Task<string> CreateGetTempUrlAsync(string containerName, string objectName, string fileName = null, bool inline = false, long deleteAfterSeconds = 86400, CancellationToken cancellationToken = default);
+    Task<string> CreatePutTempUrlAsync(string containerName, string objectName, long validForSeconds = 86400, CancellationToken cancellationToken = default);
   }
 }

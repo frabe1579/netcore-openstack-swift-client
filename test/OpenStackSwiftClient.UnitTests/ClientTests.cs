@@ -322,7 +322,6 @@ namespace OpenStackSwiftClient.UnitTests
         var containerName = TestContainerPrefix + Guid.NewGuid().ToString("N");
 
         await client.CreateContainerAsync(containerName).ConfigureAwait(false);
-        var tempUrlService = provider.GetRequiredService<ISwiftTempUrlService>();
 
         var objectName = Guid.NewGuid().ToString("N");
         ObjectInfoModel sourceInfo;
@@ -330,7 +329,7 @@ namespace OpenStackSwiftClient.UnitTests
           sourceInfo = await client.UploadObjectAsync(containerName, objectName, randomStream).ConfigureAwait(false);
         Assert.NotNull(sourceInfo);
         Assert.NotNull(sourceInfo.Hash);
-        var publicLink = await tempUrlService.CreateGetTempUrlAsync(containerName, objectName).ConfigureAwait(false);
+        var publicLink = await client.CreateGetTempUrlAsync(containerName, objectName).ConfigureAwait(false);
         using (var c = new HttpClient())
         using (var s = await c.GetStreamAsync(publicLink).ConfigureAwait(false))
         using (var md5Stream = HashStream.CreateWrite(Stream.Null, HashMode.MD5)) {
@@ -339,7 +338,7 @@ namespace OpenStackSwiftClient.UnitTests
           Assert.Equal(sourceInfo.Hash, targetMd5);
         }
 
-        var publicLink2 = await tempUrlService.CreateGetTempUrlAsync(containerName, objectName).ConfigureAwait(false);
+        var publicLink2 = await client.CreateGetTempUrlAsync(containerName, objectName).ConfigureAwait(false);
 
         await client.DeleteObjectAsync(containerName, objectName).ConfigureAwait(false);
         await client.DeleteContainerAsync(containerName).ConfigureAwait(false);
@@ -353,11 +352,10 @@ namespace OpenStackSwiftClient.UnitTests
         var containerName = TestContainerPrefix + Guid.NewGuid().ToString("N");
 
         await client.CreateContainerAsync(containerName).ConfigureAwait(false);
-        var tempUrlService = provider.GetRequiredService<ISwiftTempUrlService>();
 
         var objectName = Guid.NewGuid().ToString("N");
         string sourceMd5;
-        var putUrl = await tempUrlService.CreatePutTempUrlAsync(containerName, objectName).ConfigureAwait(false);
+        var putUrl = await client.CreatePutTempUrlAsync(containerName, objectName).ConfigureAwait(false);
         using (var randomStream = new RandomStream(10000))
         using (var hashStream = HashStream.CreateRead(randomStream, HashMode.MD5)) {
           var buffer = new byte[randomStream.Length];
@@ -368,7 +366,7 @@ namespace OpenStackSwiftClient.UnitTests
         }
         Assert.NotNull(sourceMd5);
         await Task.Delay(2000).ConfigureAwait(false);
-        var publicLink = await tempUrlService.CreateGetTempUrlAsync(containerName, objectName).ConfigureAwait(false);
+        var publicLink = await client.CreateGetTempUrlAsync(containerName, objectName).ConfigureAwait(false);
         using (var c = new HttpClient())
         using (var s = await c.GetStreamAsync(publicLink).ConfigureAwait(false))
         using (var md5Stream = HashStream.CreateWrite(Stream.Null, HashMode.MD5)) {
@@ -377,7 +375,7 @@ namespace OpenStackSwiftClient.UnitTests
           Assert.Equal(sourceMd5, targetMd5);
         }
 
-        var publicLink2 = await tempUrlService.CreateGetTempUrlAsync(containerName, objectName).ConfigureAwait(false);
+        var publicLink2 = await client.CreateGetTempUrlAsync(containerName, objectName).ConfigureAwait(false);
 
         await client.DeleteObjectAsync(containerName, objectName).ConfigureAwait(false);
         await client.DeleteContainerAsync(containerName).ConfigureAwait(false);
@@ -391,7 +389,6 @@ namespace OpenStackSwiftClient.UnitTests
         var containerName = TestContainerPrefix + Guid.NewGuid().ToString("N");
 
         await client.CreateContainerAsync(containerName).ConfigureAwait(false);
-        var tempUrlService = provider.GetRequiredService<ISwiftTempUrlService>();
 
         var objectName = Guid.NewGuid().ToString("N");
         ObjectInfoModel sourceInfo;
@@ -399,7 +396,7 @@ namespace OpenStackSwiftClient.UnitTests
           sourceInfo = await client.UploadObjectAsync(containerName, objectName, randomStream).ConfigureAwait(false);
         Assert.NotNull(sourceInfo);
         Assert.NotNull(sourceInfo.Hash);
-        var publicLink = await tempUrlService.CreateGetTempUrlAsync(containerName, objectName, "test.dat", true).ConfigureAwait(false);
+        var publicLink = await client.CreateGetTempUrlAsync(containerName, objectName, "test.dat", true).ConfigureAwait(false);
         using (var c = new HttpClient())
         using (var r = await c.GetAsync(publicLink).ConfigureAwait(false))
         using (var md5Stream = HashStream.CreateWrite(Stream.Null, HashMode.MD5)) {
@@ -508,6 +505,8 @@ namespace OpenStackSwiftClient.UnitTests
           var name = prefix + objectsNames[i];
           await client.UploadObjectAsync(containerName, name, new MemoryStream(new byte[1])).ConfigureAwait(false);
         }
+
+        await Task.Delay(2000);
 
         try {
           var browsedObjects = new List<ObjectInfoModel>();
