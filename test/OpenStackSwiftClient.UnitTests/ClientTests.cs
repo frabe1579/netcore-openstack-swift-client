@@ -426,7 +426,7 @@ namespace OpenStackSwiftClient.UnitTests
 
         await client.CreateContainerAsync(containerName).ConfigureAwait(false);
 
-        var prefix = "folder1/folder2/";
+        var prefix = $"folder1/folder2/{Guid.NewGuid()}/";
         var objectsNames = Enumerable.Repeat(Guid.Empty, objectsCount).Select(x => Guid.NewGuid().ToString("N")).ToArray();
         for (var i = 0; i < objectsCount; i++) {
           var name = prefix + objectsNames[i];

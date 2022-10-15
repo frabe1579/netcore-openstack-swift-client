@@ -284,7 +284,7 @@ namespace OpenStackSwiftClient.Impl
     public Task<ObjectInfoModel[]> BrowseObjectsAsync(string containerName, string path, string marker, int? limit = null, CancellationToken cancellationToken = new CancellationToken()) {
       var query = "?format=json";
       if (!string.IsNullOrWhiteSpace(path))
-        query += "&path=" + WebUtility.UrlEncode(path);
+        query += $"&delimiter={WebUtility.UrlDecode("/")}&prefix={WebUtility.UrlEncode(path)}";
       if (!string.IsNullOrWhiteSpace(marker))
         query += "&marker=" + WebUtility.UrlEncode(marker);
       if (limit != null && limit.Value > 0)
