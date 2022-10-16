@@ -454,6 +454,32 @@ namespace OpenStackSwiftClient.UnitTests
       }
     }
 
+    [Fact]
+    public async Task BrowseFolder_ViewFilesAndSubFolders() {
+      using (var provider = CreateProvider()) {
+        var client = provider.GetRequiredService<ISwiftClient>();
+        var containerName = TestContainerPrefix + Guid.NewGuid().ToString("N");
+        await client.CreateContainerAsync(containerName).ConfigureAwait(false);
+        var folder = Guid.NewGuid().ToString();
+        await client.UploadObjectAsync(containerName, folder + "/file1.txt", new RandomStream(1000));
+        await client.UploadObjectAsync(containerName, folder + "/file2.txt", new RandomStream(1000));
+        await client.UploadObjectAsync(containerName, folder + "/file3.txt", new RandomStream(1000));
+        await client.UploadObjectAsync(containerName, folder + "/sub/file4.txt", new RandomStream(1000));
+
+        await Task.Delay(2000);
+        var page = await client.BrowseObjectsAsync(containerName, folder + "/", null);
+        Assert.Equal(4, page.Length);
+        Assert.All(page, x => {
+          Assert.NotNull(x.Name);
+          Assert.NotEmpty(x.Name);
+          Assert.Equal(1000, x.Bytes);
+          Assert.NotNull(x.Hash);
+          Assert.NotEmpty(x.Hash);
+          Assert.True(x.LastModified > DateTime.UtcNow.AddMinutes(-5));
+        });
+      }
+    }
+
     [Theory]
     [InlineData(10, 4)]
     [InlineData(10, 10)]

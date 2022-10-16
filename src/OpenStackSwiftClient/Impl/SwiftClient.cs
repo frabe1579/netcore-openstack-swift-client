@@ -290,7 +290,7 @@ namespace OpenStackSwiftClient.Impl
     public Task<ObjectInfoModel[]> BrowseObjectsAsync(string containerName, string path, string marker, int? limit = null, CancellationToken cancellationToken = new CancellationToken()) {
       var query = "?format=json";
       if (!string.IsNullOrWhiteSpace(path))
-        query += $"&delimiter={WebUtility.UrlDecode("/")}&prefix={WebUtility.UrlEncode(path)}";
+        query += $"&prefix={WebUtility.UrlEncode(path)}";
       if (!string.IsNullOrWhiteSpace(marker))
         query += "&marker=" + WebUtility.UrlEncode(marker);
       if (limit != null && limit.Value > 0)
@@ -298,6 +298,7 @@ namespace OpenStackSwiftClient.Impl
       return _retryPolicy.ExecuteAsync(async ct => {
         using (var request = new HttpRequestMessage(HttpMethod.Get, GetPath(containerName) + query)) using (var response = await RunAsync(request, ct).ConfigureAwait(false)) {
           response.EnsureSuccessStatusCode();
+          var data = await response.Content.ReadAsStringAsync();
           return await response.Content.ReadFromJsonAsync<ObjectInfoModel[]>(cancellationToken: ct).ConfigureAwait(false);
         }
       }, cancellationToken);
