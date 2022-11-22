@@ -81,7 +81,7 @@ namespace OpenStackSwiftClient
         _recursion = true;
       else
         calculate = false;
-      var read = await base.ReadAsync(buffer, offset, count, cancellationToken);
+      var read = await innerStream.ReadAsync(buffer, offset, count, cancellationToken);
       if (calculate) {
         Interlocked.Add(ref totalRead, read);
         UpdateListener();
@@ -118,7 +118,7 @@ namespace OpenStackSwiftClient
         _recursion = true;
       else
         calculate = false;
-      await base.WriteAsync(buffer, offset, count, cancellationToken);
+      await innerStream.WriteAsync(buffer, offset, count, cancellationToken);
       if (calculate) {
         Interlocked.Add(ref totalwritten, count);
         UpdateListener();
